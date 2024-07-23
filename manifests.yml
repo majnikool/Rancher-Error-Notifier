@@ -1,0 +1,80 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: rancher-error-notifier
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: rancher-error-notifier
+            image: majidni/rancher-error-notifier:0.0.1
+            volumeMounts:
+            - name: kubeconfig-volume
+              mountPath: "/etc/kubeconfig"
+              readOnly: true
+            - name: temp-storage
+              mountPath: "/tmp"
+            env:
+            - name: KUBECONFIG
+              value: "/etc/kubeconfig/kubeconfig"
+            - name: SLACK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: slack-token-secret
+                  key: SLACK_TOKEN
+            - name: CHANNEL_NAME
+              value: "#rancher-errors"  # Example value
+            - name: X_MINUTES
+              value: "60"  # Example value
+            - name: LOCAL_TIME_OFFSET
+              value: "2"  # Example value
+            - name: DEBUG
+              value: "False"  # Example value
+
+            # Add your other environment variables here
+          volumes:
+          - name: kubeconfig-volume
+            configMap:
+              name: kubeconfig-configmap
+          - name: temp-storage
+            emptyDir: {}
+          restartPolicy: OnFailure
+
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeconfig-configmap
+data:
+  kubeconfig: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: "local"
+      cluster:
+        server: "https://x-rancher.x.com/k8s/clusters/local"
+    users:
+    - name: "local"
+      user:
+        token: "kubeconfig-u-x:x"
+    contexts:
+    - name: "local"
+      context:
+        user: "local"
+        cluster: "local"
+    current-context: "local"
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: slack-token-secret
+type: Opaque
+data:
+  SLACK_TOKEN: x # Replace with your base64 encoded token

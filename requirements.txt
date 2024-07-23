@@ -1,0 +1,2 @@
+kubernetes
+slack_sdk
